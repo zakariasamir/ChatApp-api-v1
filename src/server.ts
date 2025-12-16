@@ -4,15 +4,11 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import { Server } from "socket.io";
 import dotenv from "dotenv";
-
-import authRoutes from "./routes/authRoutes";
-import userRoutes from "./routes/userRoutes";
-import roomRoutes from "./routes/roomRoutes";
-import messageRoutes from "./routes/messageRoutes";
 import "./config/db";
 import socketService from "./services/socket";
 import { EnvironmentVariables } from "./types";
 import { errorHandler, notFound } from "./middlewares/errorHandler";
+import v1 from "./routes/v1";
 
 // Load environment variables
 dotenv.config();
@@ -44,10 +40,7 @@ app.use(cookieParser());
 socketService(io);
 
 // Routes
-app.use("/api/v1/auth", authRoutes);
-app.use("/api/v1/users", userRoutes);
-app.use("/api/v1/rooms", roomRoutes);
-app.use("/api/v1/messages", messageRoutes);
+app.use("/api/v1", v1);
 
 // Health check route
 app.get("/api/health", (req: Request, res: Response) => {
