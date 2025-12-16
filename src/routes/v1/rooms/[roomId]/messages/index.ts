@@ -1,17 +1,11 @@
 import { Router } from "express";
 import root from "./root";
-import messages from "./messages";
 
 const router = Router({ mergeParams: true });
 
 /**
- * api/v1/rooms/[roomId]
- */
-router.use("/:roomId", root);
-
-/**
  * api/v1/rooms/[roomId]/messages
  */
-router.use("/messages", messages);
+router.use("/", root);
 
 export default router;

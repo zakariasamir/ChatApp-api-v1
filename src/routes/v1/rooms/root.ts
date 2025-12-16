@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from "express";
 import auth from "@/middlewares/authMiddleware";
 import { validateCreateRoom } from "@/middlewares/validator";
-import { Room } from "@/models";
+import { Room } from "@/modules";
 import { Room as RoomType } from "@/types";
 import { formatRoom } from "@/utils/mongodb";
 
