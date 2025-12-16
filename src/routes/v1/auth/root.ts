@@ -2,7 +2,7 @@
 import { Router, Request, Response } from "express";
 import bcrypt from "bcrypt";
 import cloudinary from "../../../utils/cloudinary";
-import User from "../../../models/User";
+import User from "../../../modules/User";
 import { formatUser } from "../../../utils/mongodb";
 import {
   RegisterRequest,
