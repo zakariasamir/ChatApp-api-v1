@@ -1,22 +1,18 @@
 // In src/routes/v1/auth/root.ts
 import { Router, Request, Response } from "express";
 import bcrypt from "bcrypt";
-import cloudinary from "../../../utils/cloudinary";
-import User from "../../../modules/User";
-import { formatUser } from "../../../utils/mongodb";
+import cloudinary from "@/utils/cloudinary";
+import { User } from "@/modules";
+import { formatUser } from "@/utils/mongodb";
 import {
   RegisterRequest,
   LoginRequest,
   AuthResponse,
   UserResponse,
-} from "../../../types";
-import * as authController from "../../../controllers/authController";
-import upload from "../../../middlewares/upload";
-import auth from "../../../middlewares/authMiddleware";
-import {
-  validateRegister,
-  validateLogin,
-} from "../../../middlewares/validator";
+} from "@/types";
+import upload from "@/middlewares/upload";
+import auth from "@/middlewares/authMiddleware";
+import { validateRegister, validateLogin } from "@/middlewares/validator";
 import fs from "fs";
 import jwt from "jsonwebtoken";
 
@@ -34,8 +30,10 @@ router.post(
 
     try {
       // Check if user already exists
-      const existingUser = await User.findOne({
-        $or: [{ email }, { username }],
+      const existingUser = await User.services.exists({
+        query: {
+          $or: [{ email }, { username }],
+        },
       });
 
       if (existingUser) {
@@ -65,18 +63,18 @@ router.post(
       }
 
       // Create user
-      const newUser = new User({
-        username,
-        email,
-        password: hashedPassword,
-        profile_picture: profilePicture,
+      const newUser = await User.services.createOne({
+        payload: {
+          username,
+          email,
+          password: hashedPassword,
+          profile_picture: profilePicture,
+        },
       });
-
-      const savedUser = await newUser.save();
 
       const response: AuthResponse = {
         message: "User registered successfully",
-        user: formatUser(savedUser),
+        user: formatUser(newUser),
       };
 
       res.status(201).json(response);
@@ -98,7 +96,9 @@ router.post(
 
     try {
       // Check if user exists
-      const user = await User.findOne({ email });
+      const user = await User.services.fetchOne({
+        query: { email },
+      });
 
       if (!user) {
         res.status(400).json({ message: "Invalid credentials" });
@@ -114,7 +114,10 @@ router.post(
       }
 
       // Update online status
-      await User.findByIdAndUpdate(user._id, { is_online: true });
+      await User.services.updateOne({
+        query: { _id: user._id },
+        payload: { is_online: true },
+      });
 
       // Create token
       const token = jwt.sign(
@@ -156,7 +159,10 @@ router.post(
       const user = (req as any).user;
       console.log(user);
       // Update online status
-      await User.findByIdAndUpdate(user._id, { is_online: false });
+      await User.services.updateOne({
+        query: { _id: user._id },
+        payload: { is_online: false },
+      });
 
       // Clear cookie
       res.clearCookie("token");
@@ -178,9 +184,10 @@ router.get(
   async (req: Request, res: Response): Promise<void> => {
     try {
       const authUser = (req as any).user;
-      const user = await User.findById(authUser._id).select(
-        "username email profile_picture"
-      );
+      const user = await User.services.fetchOne({
+        query: { _id: authUser._id },
+        selection: ["username", "email", "profile_picture"],
+      });
 
       if (!user) {
         res.status(404).json({ message: "User not found" });
