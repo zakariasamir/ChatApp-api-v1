@@ -40,7 +40,7 @@ const userSchema = new mongoose.Schema(
     },
   },
   {
-    timestamps: true, // This automatically adds created_at and updated_at
+    timestamps: true,
   }
 );
 

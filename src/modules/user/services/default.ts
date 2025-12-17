@@ -1,4 +1,4 @@
-import { BaseServices, type ModelType } from "@/modules/_shared";
+import { BaseServices } from "@/modules/_shared";
 import Model from "../models";
 
 export const {
@@ -16,4 +16,4 @@ export const {
   countDocuments,
   distinct,
   createMany,
-} = BaseServices(Model as ModelType);
+} = BaseServices(Model as any);
