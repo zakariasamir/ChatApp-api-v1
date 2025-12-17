@@ -19,11 +19,8 @@ router.get(
   auth as any,
   async (req: Request, res: Response): Promise<void> => {
     try {
-      const rooms = await Room.find({}).sort({ name: 1 });
-
-      const formattedRooms = rooms.map((room: RoomType) => formatRoom(room));
-
-      res.status(200).json({ rooms: formattedRooms });
+      const rooms = await Room.services.fetchAll({});
+      res.status(200).json({ rooms: rooms });
     } catch (error) {
       console.error("Get all rooms error:", error);
       res.status(500).json({ message: "Server error" });
@@ -44,17 +41,21 @@ router.post(
 
     try {
       // Check if room already exists
-      const existingRoom = await Room.findOne({ name });
+      const existingRoom = await Room.services.exists({
+        query: { name },
+      });
 
       if (existingRoom) {
         res.status(400).json({ message: "Room already exists" });
         return;
       }
 
-      const newRoom = new Room({
-        name,
-        description,
-        is_private: isPrivate || false,
+      const newRoom = await Room.services.createOne({
+        payload: {
+          name,
+          description,
+          is_private: isPrivate || false,
+        },
       });
 
       const savedRoom = await newRoom.save();
