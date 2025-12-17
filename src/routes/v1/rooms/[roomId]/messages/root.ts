@@ -15,17 +15,19 @@ router.get(
     const { roomId } = req.params;
 
     try {
-      const messages = await Message.find({
-        room_id: new Types.ObjectId(roomId),
-      })
-        .populate("sender_id", "username profile_picture")
-        .sort({ created_at: 1 });
+      const messages = await Message.services.fetchAll({
+        query: {
+          room_id: new Types.ObjectId(roomId),
+          selection: ["content", "sender_id", "created_at"],
+          sort: { created_at: 1 },
+          populate: {
+            path: "sender_id",
+            selection: ["username", "profile_picture"],
+          },
+        },
+      });
 
-      const formattedMessages = messages.map((message) =>
-        formatMessage(message)
-      );
-
-      res.status(200).json({ messages: formattedMessages });
+      res.status(200).json({ success: true, data: messages });
     } catch (error) {
       console.error("Get room messages error:", error);
       res.status(500).json({ message: "Server error" });
@@ -33,27 +35,19 @@ router.get(
   }
 );
 
-// Get private messages
-router.get(
-  "/private/:userId",
-  auth as any,
-  messageController.getPrivateMessages
-);
-
 // Create room message
 router.post(
-  "/room/:roomId",
+  "/",
   auth as any,
   validateCreateMessage,
-  messageController.createRoomMessage
-);
-
-// Create private message
-router.post(
-  "/private/:userId",
-  auth as any,
-  validateCreateMessage,
-  messageController.createPrivateMessage
+  async (req: Request, res: Response): Promise<void> => {
+    const { roomId } = req.params;
+    const { content } = req.body;
+    const senderId = req.user._id;
+    const message = await Message.services.createOne({
+      payload: { content, sender_id: senderId, room_id: roomId },
+    });
+  }
 );
 
 export default router;
