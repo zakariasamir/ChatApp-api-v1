@@ -2,8 +2,6 @@ import { Router, Request, Response, NextFunction } from "express";
 import auth from "@/middlewares/authMiddleware";
 import { validateCreateRoom } from "@/middlewares/validator";
 import { Room } from "@/modules";
-import { Room as RoomType } from "@/types";
-import { formatRoom } from "@/utils/mongodb";
 
 const router = Router();
 
@@ -20,8 +18,9 @@ router.get(
   async (req: Request, res: Response): Promise<void> => {
     try {
       const { roomId } = req.params;
-      const room = await Room.findById({
-        _id: roomId,
+      const room = await Room.services.fetchById({
+        query: { _id: roomId },
+        selection: ["name", "description", "is_private"],
       });
 
       if (!room) {
@@ -29,9 +28,7 @@ router.get(
         return;
       }
 
-      const formattedRoom = formatRoom(room);
-
-      res.status(200).json({ room: formattedRoom });
+      res.status(200).json(room);
     } catch (error) {
       console.error("Get room error:", error);
       res.status(500).json({ message: "Server error" });
@@ -53,8 +50,9 @@ router.put(
 
     try {
       // Check if room already exists
-      const existingRoom = await Room.findById({
-        _id: roomId,
+      const existingRoom = await Room.services.fetchOne({
+        query: { _id: roomId },
+        selection: ["name", "description", "is_private"],
       });
 
       if (existingRoom) {
@@ -62,23 +60,14 @@ router.put(
         return;
       }
 
-      const updatedRoom = await Room.findByIdAndUpdate(
-        {
-          _id: roomId,
-        },
-        {
-          name,
-          description,
-          is_private: isPrivate || false,
-        },
-        { new: true }
-      );
-
-      const formattedRoom = formatRoom(updatedRoom);
+      const updatedRoom = await Room.services.updateOne({
+        query: { _id: roomId },
+        payload: { name, description, is_private: isPrivate || false },
+      });
 
       res.status(200).json({
         message: "Room updated successfully",
-        room: formattedRoom,
+        room: updatedRoom,
       });
     } catch (error) {
       console.error("Update room error:", error);
