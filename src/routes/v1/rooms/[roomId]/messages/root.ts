@@ -1,8 +1,7 @@
 import { Router, Request, Response } from "express";
-import auth from "../../../../../middlewares/authMiddleware";
-import { validateCreateMessage } from "../../../../../middlewares/validator";
+import auth from "@/middlewares/authMiddleware";
+import { validateCreateMessage } from "@/middlewares/validator";
 import { Message } from "@/modules";
-import { formatMessage } from "@/utils/mongodb";
 import { Types } from "mongoose";
 
 const router = Router();
@@ -43,10 +42,18 @@ router.post(
   async (req: Request, res: Response): Promise<void> => {
     const { roomId } = req.params;
     const { content } = req.body;
-    const senderId = req.user._id;
-    const message = await Message.services.createOne({
-      payload: { content, sender_id: senderId, room_id: roomId },
-    });
+    const senderId = (req as any).user._id;
+
+    try {
+      const message = await Message.services.createOne({
+        payload: { content, sender_id: senderId, room_id: roomId },
+      });
+
+      res.status(201).json({ success: true, data: message });
+    } catch (error) {
+      console.error("Create room message error:", error);
+      res.status(500).json({ message: "Server error" });
+    }
   }
 );
 
