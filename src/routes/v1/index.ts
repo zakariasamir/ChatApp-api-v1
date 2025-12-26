@@ -1,14 +1,9 @@
 import { Router } from "express";
-import auth from "./auth";
+import auth from "../auth";
 import users from "./users";
 import rooms from "./rooms";
 
 const router = Router();
-
-/**
- * api/v1/auth
- */
-router.use("/auth", auth);
 
 /**
  * api/v1/users
