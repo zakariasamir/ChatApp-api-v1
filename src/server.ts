@@ -8,12 +8,12 @@ import "./config/db";
 import socketService from "./services/socket";
 import { EnvironmentVariables } from "./types";
 import { errorHandler, notFound } from "./middlewares/errorHandler";
-import v1 from "./routes/v1";
+import routes from "./routes";
 
 // Load environment variables
 dotenv.config();
 
-const PORT = process.env.SERVER_PORT || 5004;
+const PORT = process.env.SERVER_PORT || 4000;
 
 const app = express();
 const server = http.createServer(app);
@@ -40,7 +40,7 @@ app.use(cookieParser());
 socketService(io);
 
 // Routes
-app.use("/api/v1", v1);
+app.use("/api", routes);
 
 // Health check route
 app.get("/api/health", (req: Request, res: Response) => {

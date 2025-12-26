@@ -44,7 +44,9 @@ export default (io: Server): void => {
       const decoded = jwt.verify(token, process.env.JWT_SECRET!) as JWTPayload;
 
       // Find user
-      const user = await User.findById(decoded.id);
+      const user = await User.services.fetchById({
+        query: { _id: decoded.id },
+      });
 
       if (!user) {
         return next(new Error("User not found"));
@@ -73,7 +75,10 @@ export default (io: Server): void => {
     userSockets.set(user.id, socket.id);
 
     // Update user status
-    await User.findByIdAndUpdate(user.id, { is_online: true });
+    await User.services.updateOne({
+      query: { _id: user.id },
+      payload: { is_online: true },
+    });
 
     // Notify all users (including the current user)
     io.emit("user:online", {
@@ -100,21 +105,16 @@ export default (io: Server): void => {
         const { roomId, content } = data;
 
         // Insert message to database
-        const newMessage = new Message({
-          content,
-          sender_id: new Types.ObjectId(user.id),
-          room_id: new Types.ObjectId(roomId),
+        const newMessage = await Message.services.createOne({
+          payload: {
+            content,
+            sender_id: new Types.ObjectId(user.id),
+            room_id: new Types.ObjectId(roomId),
+          },
         });
 
-        const savedMessage = await newMessage.save();
-        const populatedMessage = await Message.findById(
-          savedMessage._id
-        ).populate("sender_id", "username profile_picture");
-
-        const message = formatMessage(populatedMessage!);
-
         // Broadcast to room
-        io.to(`room:${roomId}`).emit("message:room", message);
+        io.to(`room:${roomId}`).emit("message:room", newMessage);
       } catch (error) {
         console.error("Room message error:", error);
       }
@@ -126,29 +126,24 @@ export default (io: Server): void => {
         const { receiverId, content } = data;
 
         // Insert message to database
-        const newMessage = new Message({
-          content,
-          sender_id: new Types.ObjectId(user.id),
-          receiver_id: new Types.ObjectId(receiverId),
+        const newMessage = await Message.services.createOne({
+          payload: {
+            content,
+            sender_id: new Types.ObjectId(user.id),
+            receiver_id: new Types.ObjectId(receiverId),
+          },
         });
-
-        const savedMessage = await newMessage.save();
-        const populatedMessage = await Message.findById(
-          savedMessage._id
-        ).populate("sender_id", "username profile_picture");
-
-        const message = formatMessage(populatedMessage!);
 
         // Get receiver socket
         const receiverSocketId = userSockets.get(receiverId);
 
         // Send to receiver if online
         if (receiverSocketId) {
-          io.to(receiverSocketId).emit("message:private", message);
+          io.to(receiverSocketId).emit("message:private", newMessage);
         }
 
         // Send back to sender
-        socket.emit("message:private", message);
+        socket.emit("message:private", newMessage);
       } catch (error) {
         console.error("Private message error:", error);
       }
@@ -202,7 +197,10 @@ export default (io: Server): void => {
       setTimeout(async () => {
         // Check if user reconnected
         if (!userSockets.has(user.id)) {
-          await User.findByIdAndUpdate(user.id, { is_online: false });
+          await User.services.updateOne({
+            query: { _id: user.id },
+            payload: { is_online: false },
+          });
 
           // Notify all users
           io.emit("user:offline", {
