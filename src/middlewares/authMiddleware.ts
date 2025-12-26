@@ -1,9 +1,8 @@
 import jwt from "jsonwebtoken";
 import { Request, Response, NextFunction } from "express";
-import { Types } from "mongoose";
 
-import { User } from "../modules";
-import { AuthenticatedRequest, JWTPayload } from "../types";
+import { User } from "@/modules";
+import { AuthenticatedRequest, JWTPayload } from "@/types";
 
 const auth = async (
   req: AuthenticatedRequest,
@@ -23,7 +22,10 @@ const auth = async (
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as JWTPayload;
 
     // Find user
-    const user = await User.findById(decoded.id);
+    const user = await User.services.fetchById({
+      id: decoded.id as string,
+      selection: ["username", "email", "profile_picture", "is_online"],
+    });
 
     if (!user) {
       res.status(401).json({ message: "User not found" });
