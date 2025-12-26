@@ -4,7 +4,7 @@ import root from "./root";
 const router = Router();
 
 /**
- * api/v1/auth
+ * api/auth
  */
 router.use("/", root);
 

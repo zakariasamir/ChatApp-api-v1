@@ -186,7 +186,7 @@ router.get(
       const authUser = (req as any).user;
       const user = await User.services.fetchOne({
         query: { _id: authUser._id },
-        selection: ["username", "email", "profile_picture"],
+        selection: ["username", "email", "profile_picture", "is_online"],
       });
 
       if (!user) {
