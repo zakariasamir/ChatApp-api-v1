@@ -4,7 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
-const models_1 = require("../models");
+const modules_1 = require("../modules");
 const auth = async (req, res, next) => {
     try {
         const token = req.cookies.token;
@@ -13,7 +13,10 @@ const auth = async (req, res, next) => {
             return;
         }
         const decoded = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET);
-        const user = await models_1.User.findById(decoded.id);
+        const user = await modules_1.User.services.fetchById({
+            id: decoded.id,
+            selection: ["username", "email", "profile_picture", "is_online"],
+        });
         if (!user) {
             res.status(401).json({ message: "User not found" });
             return;

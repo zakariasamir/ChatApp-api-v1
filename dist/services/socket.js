@@ -6,7 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const cookie_1 = __importDefault(require("cookie"));
 const mongoose_1 = require("mongoose");
-const models_1 = require("../models");
+const modules_1 = require("../modules");
 const mongodb_1 = require("../utils/mongodb");
 exports.default = (io) => {
     const userSockets = new Map();
@@ -18,7 +18,9 @@ exports.default = (io) => {
                 return next(new Error("Authentication required"));
             }
             const decoded = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET);
-            const user = await models_1.User.findById(decoded.id);
+            const user = await modules_1.User.services.fetchById({
+                query: { _id: decoded.id },
+            });
             if (!user) {
                 return next(new Error("User not found"));
             }
@@ -39,8 +41,11 @@ exports.default = (io) => {
         const user = socket.user;
         console.log(`User connected: ${user.username} (${user.id})`);
         userSockets.set(user.id, socket.id);
-        await models_1.User.findByIdAndUpdate(user.id, { is_online: true });
-        socket.broadcast.emit("user:online", {
+        await modules_1.User.services.updateOne({
+            query: { _id: user.id },
+            payload: { is_online: true },
+        });
+        io.emit("user:online", {
             id: user.id,
             username: user.username,
             profile_picture: user.profile_picture,
@@ -56,15 +61,14 @@ exports.default = (io) => {
         socket.on("message:room", async (data) => {
             try {
                 const { roomId, content } = data;
-                const newMessage = new models_1.Message({
-                    content,
-                    sender_id: new mongoose_1.Types.ObjectId(user.id),
-                    room_id: new mongoose_1.Types.ObjectId(roomId),
+                const newMessage = await modules_1.Message.services.createOne({
+                    payload: {
+                        content,
+                        sender_id: new mongoose_1.Types.ObjectId(user.id),
+                        room_id: new mongoose_1.Types.ObjectId(roomId),
+                    },
                 });
-                const savedMessage = await newMessage.save();
-                const populatedMessage = await models_1.Message.findById(savedMessage._id).populate("sender_id", "username profile_picture");
-                const message = (0, mongodb_1.formatMessage)(populatedMessage);
-                io.to(`room:${roomId}`).emit("message:room", message);
+                io.to(`room:${roomId}`).emit("message:room", newMessage);
             }
             catch (error) {
                 console.error("Room message error:", error);
@@ -73,19 +77,18 @@ exports.default = (io) => {
         socket.on("message:private", async (data) => {
             try {
                 const { receiverId, content } = data;
-                const newMessage = new models_1.Message({
-                    content,
-                    sender_id: new mongoose_1.Types.ObjectId(user.id),
-                    receiver_id: new mongoose_1.Types.ObjectId(receiverId),
+                const newMessage = await modules_1.Message.services.createOne({
+                    payload: {
+                        content,
+                        sender_id: new mongoose_1.Types.ObjectId(user.id),
+                        receiver_id: new mongoose_1.Types.ObjectId(receiverId),
+                    },
                 });
-                const savedMessage = await newMessage.save();
-                const populatedMessage = await models_1.Message.findById(savedMessage._id).populate("sender_id", "username profile_picture");
-                const message = (0, mongodb_1.formatMessage)(populatedMessage);
                 const receiverSocketId = userSockets.get(receiverId);
                 if (receiverSocketId) {
-                    io.to(receiverSocketId).emit("message:private", message);
+                    io.to(receiverSocketId).emit("message:private", newMessage);
                 }
-                socket.emit("message:private", message);
+                socket.emit("message:private", newMessage);
             }
             catch (error) {
                 console.error("Private message error:", error);
@@ -128,8 +131,11 @@ exports.default = (io) => {
             userSockets.delete(user.id);
             setTimeout(async () => {
                 if (!userSockets.has(user.id)) {
-                    await models_1.User.findByIdAndUpdate(user.id, { is_online: false });
-                    socket.broadcast.emit("user:offline", {
+                    await modules_1.User.services.updateOne({
+                        query: { _id: user.id },
+                        payload: { is_online: false },
+                    });
+                    io.emit("user:offline", {
                         id: user.id,
                     });
                 }
