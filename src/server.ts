@@ -54,7 +54,7 @@ app.get("/api", (req: Request, res: Response) => {
     version: "1.0.0",
     description: "Real-time chat application API with Socket.IO",
     endpoints: {
-      auth: "/api/v1/auth",
+      auth: "/api/auth",
       users: "/api/v1/users",
       rooms: "/api/v1/rooms",
       messages: "/api/v1/messages",

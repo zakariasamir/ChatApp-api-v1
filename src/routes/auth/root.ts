@@ -19,7 +19,7 @@ import jwt from "jsonwebtoken";
 const router = Router();
 
 /**
- * POST /api/v1/auth/register
+ * POST /api/auth/register
  */
 router.post(
   "/register",
@@ -86,7 +86,7 @@ router.post(
 );
 
 /**
- * POST /api/v1/auth/login
+ * POST /api/auth/login
  */
 router.post(
   "/login",
@@ -95,6 +95,7 @@ router.post(
     const { email, password }: LoginRequest = req.body;
 
     try {
+      console.log({ email, password });
       // Check if user exists
       const user = await User.services.fetchOne({
         query: { email },
@@ -132,6 +133,7 @@ router.post(
       res.cookie("token", token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       });
 
@@ -149,7 +151,7 @@ router.post(
 );
 
 /**
- * POST /api/v1/auth/logout
+ * POST /api/auth/logout
  */
 router.post(
   "/logout",
@@ -176,7 +178,7 @@ router.post(
 );
 
 /**
- * GET /api/v1/auth/me
+ * GET /api/auth/me
  */
 router.get(
   "/me",
