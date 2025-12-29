@@ -4,8 +4,8 @@ import cookie from "cookie";
 import { Types } from "mongoose";
 
 import { User, Message } from "../modules";
-import { JWTPayload, SocketData } from "../types";
-import { formatUser, formatMessage } from "../utils/mongodb";
+import { JWTPayload, SocketData, User as UserType } from "@/types";
+import { formatUser } from "@/utils/mongodb";
 
 interface AuthenticatedSocket extends Socket {
   user: SocketData;
@@ -30,6 +30,33 @@ export default (io: Server): void => {
   // Map to store user socket connections
   const userSockets = new Map<string, string>();
 
+  // Helper function to fetch and emit online users list
+  const emitUsersList = async () => {
+    try {
+      const result = await User.services.fetchAll({
+        query: { is_online: true },
+        selection: ["username", "email", "profile_picture", "is_online"],
+      });
+
+      // Format users for the list
+      const onlineUsers = (result.docs || []).map((user: UserType) => {
+        const formatted = formatUser(user);
+        return {
+          id: formatted.id,
+          username: formatted.username,
+          email: formatted.email,
+          profile_picture: formatted.profile_picture,
+          is_online: formatted.is_online,
+        };
+      });
+
+      // Emit to all connected clients
+      io.emit("users:list", onlineUsers);
+    } catch (error) {
+      console.error("Error fetching online users list:", error);
+    }
+  };
+
   // Middleware for authentication
   io.use(async (socket: Socket, next) => {
     try {
@@ -41,11 +68,14 @@ export default (io: Server): void => {
       }
 
       // Verify token
-      const decoded = jwt.verify(token, process.env.JWT_SECRET!) as JWTPayload;
+      const decoded = jwt.verify(
+        token,
+        process.env.JWT_SECRET || ""
+      ) as unknown as JWTPayload;
 
       // Find user
       const user = await User.services.fetchById({
-        query: { _id: decoded.id },
+        id: decoded.id as string,
       });
 
       if (!user) {
@@ -54,7 +84,7 @@ export default (io: Server): void => {
 
       // Set user data on socket
       const formattedUser = formatUser(user);
-      (socket as any).user = {
+      (socket as AuthenticatedSocket).user = {
         id: formattedUser.id,
         username: formattedUser.username,
         profile_picture: formattedUser.profile_picture,
@@ -68,8 +98,7 @@ export default (io: Server): void => {
   });
 
   io.on("connection", async (socket: Socket) => {
-    const user = (socket as any).user;
-    console.log(`User connected: ${user.username} (${user.id})`);
+    const user = (socket as AuthenticatedSocket).user;
 
     // Add user to map
     userSockets.set(user.id, socket.id);
@@ -87,16 +116,17 @@ export default (io: Server): void => {
       profile_picture: user.profile_picture,
     });
 
+    // Emit updated users list
+    await emitUsersList();
+
     // Join a room
     socket.on("room:join", (roomId: string) => {
       socket.join(`room:${roomId}`);
-      console.log(`${user.username} joined room ${roomId}`);
     });
 
     // Leave a room
     socket.on("room:leave", (roomId: string) => {
       socket.leave(`room:${roomId}`);
-      console.log(`${user.username} left room ${roomId}`);
     });
 
     // Listen for room messages
@@ -188,8 +218,6 @@ export default (io: Server): void => {
 
     // Handle disconnect
     socket.on("disconnect", async () => {
-      console.log(`User disconnected: ${user.username} (${user.id})`);
-
       // Remove from map
       userSockets.delete(user.id);
 
@@ -206,6 +234,9 @@ export default (io: Server): void => {
           io.emit("user:offline", {
             id: user.id,
           });
+
+          // Emit updated users list
+          await emitUsersList();
         }
       }, 5000);
     });
