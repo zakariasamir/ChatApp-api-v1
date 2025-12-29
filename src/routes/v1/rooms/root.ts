@@ -19,7 +19,7 @@ router.get(
   async (req: Request, res: Response): Promise<void> => {
     try {
       const rooms = await Room.services.fetchAll({});
-      res.status(200).json({ rooms: rooms });
+      res.status(200).json({ data: rooms });
     } catch (error) {
       console.error("Get all rooms error:", error);
       res.status(500).json({ message: "Server error" });
