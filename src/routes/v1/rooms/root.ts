@@ -3,8 +3,9 @@ import auth from "@/middlewares/authMiddleware";
 import { validateCreateRoom } from "@/middlewares/validator";
 import { Room } from "@/modules";
 import { formatRoom } from "@/utils/mongodb";
+import RoomUser from "@/modules/room-user";
 
-const router = Router();
+const router = Router({ mergeParams: true });
 
 interface CreateRoomRequest {
   name: string;
@@ -57,13 +58,20 @@ router.post(
         },
       });
 
-      const savedRoom = await newRoom.save();
+      const roomUser = await RoomUser.services.createOne({
+        payload: {
+          roomId: newRoom._id,
+          userId: (req as any).user._id,
+          role: "owner",
+        },
+      });
 
-      const formattedRoom = formatRoom(savedRoom);
+      const formattedRoom = formatRoom(newRoom);
 
       res.status(201).json({
         message: "Room created successfully",
         room: formattedRoom,
+        roomUser: roomUser,
       });
     } catch (error) {
       console.error("Create room error:", error);
