@@ -4,7 +4,7 @@ import { validateCreateMessage } from "@/middlewares/validator";
 import { Message } from "@/modules";
 import { Types } from "mongoose";
 
-const router = Router();
+const router = Router({ mergeParams: true });
 
 // Get user messages
 router.get(
@@ -14,16 +14,20 @@ router.get(
     const { userId } = req.params;
 
     try {
-      const messages = await Message.services.fetchAll({
-        query: {
-          sender_id: new Types.ObjectId(userId),
-          selection: ["content", "sender_id", "created_at"],
-          sort: { created_at: 1 },
-          populate: {
-            path: "sender_id",
-            selection: ["username", "profile_picture"],
+      const messages = await Message.services.aggregateWithoutPaginate({
+        pipeline: [
+          {
+            $match: {
+              $or: [
+                { sender_id: new Types.ObjectId(userId) },
+                { receiver_id: new Types.ObjectId(userId) },
+              ],
+            },
           },
-        },
+          {
+            $sort: { created_at: 1 },
+          },
+        ],
       });
 
       res.status(200).json({ success: true, data: messages });
