@@ -3,6 +3,7 @@ import { Request, Response, NextFunction } from "express";
 
 import { User } from "@/modules";
 import { AuthenticatedRequest, JWTPayload } from "@/types";
+import { Types } from "mongoose";
 
 const auth = async (
   req: AuthenticatedRequest,
@@ -11,7 +12,7 @@ const auth = async (
 ): Promise<void> => {
   try {
     // Get token from cookies
-    const token = (req as any).cookies.token;
+    const token = (req as Request).cookies.token;
 
     if (!token) {
       res.status(401).json({ message: "Authentication required" });
@@ -34,7 +35,7 @@ const auth = async (
 
     // Add user to request
     req.user = {
-      _id: user._id as any,
+      _id: user._id as Types.ObjectId,
       username: user.username,
       email: user.email,
       password: user.password,
