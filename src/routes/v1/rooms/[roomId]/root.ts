@@ -3,7 +3,7 @@ import auth from "@/middlewares/authMiddleware";
 import { validateCreateRoom } from "@/middlewares/validator";
 import { Room } from "@/modules";
 
-const router = Router();
+const router = Router({ mergeParams: true });
 
 interface CreateRoomRequest {
   name: string;
