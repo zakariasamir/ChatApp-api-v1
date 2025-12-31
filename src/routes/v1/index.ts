@@ -1,5 +1,4 @@
 import { Router } from "express";
-import auth from "../auth";
 import users from "./users";
 import rooms from "./rooms";
 

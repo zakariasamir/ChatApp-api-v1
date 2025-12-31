@@ -1,7 +1,7 @@
 import { User } from "@/modules";
 import { Router, Request, Response } from "express";
 
-const router = Router();
+const router = Router({ mergeParams: true });
 
 /**
  * GET /api/v1/users
